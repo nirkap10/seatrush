@@ -8,15 +8,24 @@ describe('AppController', () => {
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [
+        {
+          provide: AppService,
+          useValue: {
+            getHealth: () =>
+              Promise.resolve({ status: 'ok', database: 'connected' }),
+          },
+        },
+      ],
     }).compile();
 
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  it('returns what the service reports', async () => {
+    await expect(appController.getHealth()).resolves.toEqual({
+      status: 'ok',
+      database: 'connected',
     });
   });
 });
