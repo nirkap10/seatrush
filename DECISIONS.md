@@ -17,6 +17,8 @@ The project is still being built, so these describe the plan and may change.
 
 - All rows in an event have the same number of seats, because the brief gives one "seats per row" value.
 - Rows run from A to Z, so an event has at most 26 rows.
+- An event has two times: when the show starts and when tickets go on sale (the drop).
+- Each zone covers one continuous range of rows, such as A to C.
 - Zones must cover every row with no overlap, so every seat has exactly one price. Otherwise, the event is rejected.
 - Zone names are unique within an event, because the best available filter finds a zone by name.
 - An event can be created with a drop time in the past, like the demo event.
