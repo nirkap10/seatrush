@@ -17,6 +17,9 @@ The project is still being built, so these describe the plan and may change.
 
 - All rows in an event have the same number of seats, because the brief gives one "seats per row" value.
 - Rows run from A to Z, so an event has at most 26 rows.
+- A row has at most 100 seats, so an event has at most 2,600 seats.
+- The drop time can't be after the show starts.
+- The demo event is created once, the first time the API starts. Starting again doesn't create a second one.
 - An event has two times: when the show starts and when tickets go on sale (the drop).
 - Each zone covers one continuous range of rows, such as A to C.
 - Zones must cover every row with no overlap, so every seat has exactly one price. Otherwise, the event is rejected.
