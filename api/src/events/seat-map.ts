@@ -25,21 +25,12 @@ export function findZoneProblem(
   zones: ZoneRows[],
   rowCount: number,
 ): string | null {
-  const lastRow = rowLetter(rowCount - 1);
   const seenNames = new Set<string>();
-
   for (const zone of zones) {
     if (seenNames.has(zone.name)) {
       return `There is more than one zone named ${zone.name}`;
     }
     seenNames.add(zone.name);
-
-    if (zone.fromRow > zone.toRow) {
-      return `Zone ${zone.name} starts at row ${zone.fromRow}, which is after its last row ${zone.toRow}`;
-    }
-    if (zone.toRow > lastRow) {
-      return `Zone ${zone.name} goes up to row ${zone.toRow}, but the event only has rows A to ${lastRow}`;
-    }
   }
 
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {

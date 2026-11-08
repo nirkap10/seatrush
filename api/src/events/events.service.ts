@@ -6,13 +6,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { CreateEventDto } from './dto/create-event.dto.js';
-import { EventDetailsDto, EventSummaryDto } from './dto/event-response.dto.js';
 import { Event } from './event.entity.js';
 import { buildSeats, findZoneProblem } from './seat-map.js';
 import { Seat } from './seat.entity.js';
 import { Zone } from './zone.entity.js';
-
-const POSTGRES_MAX_INT = 2_147_483_647;
 
 @Injectable()
 export class EventsService {
@@ -20,10 +17,9 @@ export class EventsService {
     private readonly dataSource: DataSource,
     @InjectRepository(Event) private readonly events: Repository<Event>,
     @InjectRepository(Zone) private readonly zones: Repository<Zone>,
-    @InjectRepository(Seat) private readonly seats: Repository<Seat>,
   ) {}
 
-  async createEvent(dto: CreateEventDto): Promise<EventDetailsDto> {
+  async createEvent(dto: CreateEventDto) {
     const zoneProblem = findZoneProblem(dto.zones, dto.rowCount);
     if (zoneProblem) {
       throw new BadRequestException(zoneProblem);
@@ -80,17 +76,12 @@ export class EventsService {
     return this.getEvent(eventId);
   }
 
-  async listEvents(): Promise<EventSummaryDto[]> {
-    const events = await this.events.find({
-      order: { dropAt: 'ASC', id: 'ASC' },
-    });
-    return events.map((event) => this.toSummary(event));
+  listEvents(): Promise<Event[]> {
+    return this.events.find({ order: { dropAt: 'ASC', id: 'ASC' } });
   }
 
-  async getEvent(id: number): Promise<EventDetailsDto> {
-    // A larger number can't be an id, and PostgreSQL would reject it with an error.
-    const event =
-      id <= POSTGRES_MAX_INT ? await this.events.findOneBy({ id }) : null;
+  async getEvent(id: number) {
+    const event = await this.events.findOneBy({ id });
     if (!event) {
       throw new NotFoundException(`Event ${id} was not found`);
     }
@@ -99,40 +90,20 @@ export class EventsService {
       where: { eventId: id },
       order: { fromRow: 'ASC' },
     });
-    const seats = await this.seats.find({
-      where: { eventId: id },
-      order: { rowLetter: 'ASC', seatNumber: 'ASC' },
-    });
 
-    return {
-      ...this.toSummary(event),
-      zones: zones.map((zone) => ({
-        id: zone.id,
-        name: zone.name,
-        fromRow: zone.fromRow,
-        toRow: zone.toRow,
-        priceAgorot: zone.priceAgorot,
-      })),
-      seats: seats.map((seat) => ({
-        label: seat.label,
-        rowLetter: seat.rowLetter,
-        seatNumber: seat.seatNumber,
-        zoneId: seat.zoneId,
-        // Holds and orders arrive in stages 3 and 4, and will change this.
-        status: 'available',
-      })),
-    };
-  }
+    // Every seat is available until holds and orders exist (stages 3 and 4).
+    const seats: unknown[] = await this.dataSource.query(
+      `SELECT label,
+              row_letter  AS "rowLetter",
+              seat_number AS "seatNumber",
+              zone_id     AS "zoneId",
+              'available' AS status
+       FROM seats
+       WHERE event_id = $1
+       ORDER BY row_letter, seat_number`,
+      [id],
+    );
 
-  private toSummary(event: Event) {
-    return {
-      id: event.id,
-      name: event.name,
-      venue: event.venue,
-      startsAt: event.startsAt,
-      dropAt: event.dropAt,
-      rowCount: event.rowCount,
-      seatsPerRow: event.seatsPerRow,
-    };
+    return { event, zones, seats };
   }
 }

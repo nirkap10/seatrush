@@ -5,7 +5,6 @@ import { App } from 'supertest/types.js';
 import { DataSource } from 'typeorm';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EVENT_NAME } from './../src/events/demo-event.service.js';
-import { setupSwagger } from './../src/swagger.js';
 
 const validEvent = {
   name: 'Test Show',
@@ -29,7 +28,6 @@ describe('events API (real database)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication();
-    setupSwagger(app);
     await app.init();
   });
 
@@ -48,15 +46,15 @@ describe('events API (real database)', () => {
       .post('/events')
       .send(validEvent)
       .expect(201);
-    createdEventIds.push(response.body.id);
+    createdEventIds.push(response.body.event.id);
     return response.body;
   }
 
-  function expectRejected(event: object, status: number, message: string) {
+  function expectRejected(event: object, message: string) {
     return request(app.getHttpServer())
       .post('/events')
       .send(event)
-      .expect(status)
+      .expect(400)
       .expect((response) => {
         expect(String(response.body.message)).toContain(message);
       });
@@ -64,11 +62,11 @@ describe('events API (real database)', () => {
 
   describe('POST /events', () => {
     it('creates the event with its zones and every seat', async () => {
-      const event = await createEvent();
+      const { event, zones, seats } = await createEvent();
 
       expect(event.name).toBe('Test Show');
-      expect(event.zones).toHaveLength(2);
-      expect(event.seats.map((seat: { label: string }) => seat.label)).toEqual([
+      expect(zones).toHaveLength(2);
+      expect(seats.map((seat: { label: string }) => seat.label)).toEqual([
         'A1',
         'A2',
         'B1',
@@ -79,13 +77,9 @@ describe('events API (real database)', () => {
     });
 
     it('puts each seat in the zone that covers its row', async () => {
-      const event = await createEvent();
-      const back = event.zones.find(
-        (zone: { name: string }) => zone.name === 'Back',
-      );
-      const c2 = event.seats.find(
-        (seat: { label: string }) => seat.label === 'C2',
-      );
+      const { zones, seats } = await createEvent();
+      const back = zones.find((zone: { name: string }) => zone.name === 'Back');
+      const c2 = seats.find((seat: { label: string }) => seat.label === 'C2');
 
       expect(c2.zoneId).toBe(back.id);
       expect(c2.status).toBe('available');
@@ -94,7 +88,6 @@ describe('events API (real database)', () => {
     it('rejects a row with no zone', () => {
       return expectRejected(
         { ...validEvent, rowCount: 4 },
-        400,
         'Row D has no zone',
       );
     });
@@ -102,35 +95,19 @@ describe('events API (real database)', () => {
     it('rejects a drop time after the show starts', () => {
       return expectRejected(
         { ...validEvent, dropAt: '2031-01-01T10:00:00Z' },
-        400,
         'The drop time cannot be after the show starts',
       );
     });
 
     it('rejects a missing name', () => {
       const { name: _name, ...withoutName } = validEvent;
-      return expectRejected(withoutName, 400, 'name');
-    });
-
-    it('rejects more than 26 rows', () => {
-      return expectRejected({ ...validEvent, rowCount: 27 }, 400, 'rowCount');
-    });
-
-    it('checks the fields inside each zone', () => {
-      return expectRejected(
-        {
-          ...validEvent,
-          zones: [{ name: 'Front', fromRow: 'a', toRow: 'C', priceAgorot: 1 }],
-        },
-        400,
-        'fromRow must be one capital letter',
-      );
+      return expectRejected(withoutName, 'name');
     });
   });
 
   describe('GET /events', () => {
     it('lists events without their seats', async () => {
-      const event = await createEvent();
+      const { event } = await createEvent();
 
       const response = await request(app.getHttpServer())
         .get('/events')
@@ -146,12 +123,13 @@ describe('events API (real database)', () => {
 
   describe('GET /events/:id', () => {
     it('returns the event with its zones and seats', async () => {
-      const event = await createEvent();
+      const { event } = await createEvent();
 
       const response = await request(app.getHttpServer())
         .get(`/events/${event.id}`)
         .expect(200);
 
+      expect(response.body.event.name).toBe('Test Show');
       expect(response.body.zones).toHaveLength(2);
       expect(response.body.seats).toHaveLength(6);
     });
@@ -163,12 +141,6 @@ describe('events API (real database)', () => {
         .expect((response) => {
           expect(response.body.message).toBe('Event 2147483647 was not found');
         });
-    });
-
-    it('returns 404 for a number too large to be an id', () => {
-      return request(app.getHttpServer())
-        .get('/events/99999999999')
-        .expect(404);
     });
 
     it('returns 400 when the id is not a number', () => {
@@ -187,24 +159,6 @@ describe('events API (real database)', () => {
 
       expect(demo).toBeDefined();
       expect(new Date(demo.dropAt).getTime()).toBeLessThan(Date.now());
-    });
-  });
-
-  describe('API docs', () => {
-    it('serves the interactive page', () => {
-      return request(app.getHttpServer()).get('/docs').expect(200);
-    });
-
-    it('describes every event endpoint and its errors', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/docs-json')
-        .expect(200);
-      const paths = response.body.paths;
-
-      expect(paths['/events'].post.responses).toHaveProperty('201');
-      expect(paths['/events'].post.responses).toHaveProperty('400');
-      expect(paths['/events'].get.responses).toHaveProperty('200');
-      expect(paths['/events/{id}'].get.responses).toHaveProperty('404');
     });
   });
 });

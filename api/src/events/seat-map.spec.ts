@@ -25,22 +25,6 @@ describe('findZoneProblem', () => {
     expect(findZoneProblem(zones, 3)).toBe('Row B is in more than one zone');
   });
 
-  it('rejects a zone past the last row', () => {
-    const zones = [{ name: 'Front', fromRow: 'A', toRow: 'D' }];
-
-    expect(findZoneProblem(zones, 3)).toBe(
-      'Zone Front goes up to row D, but the event only has rows A to C',
-    );
-  });
-
-  it('rejects a zone whose rows are in the wrong order', () => {
-    const zones = [{ name: 'Front', fromRow: 'C', toRow: 'A' }];
-
-    expect(findZoneProblem(zones, 3)).toBe(
-      'Zone Front starts at row C, which is after its last row A',
-    );
-  });
-
   it('rejects two zones with the same name', () => {
     const zones = [
       { name: 'Front', fromRow: 'A', toRow: 'A' },

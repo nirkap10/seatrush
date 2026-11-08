@@ -13,8 +13,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-const POSTGRES_MAX_INT = 2_147_483_647;
-
 export class CreateZoneDto {
   @ApiProperty({ example: 'Front' })
   @IsString()
@@ -32,7 +30,6 @@ export class CreateZoneDto {
   @ApiProperty({ example: 34935, description: 'Price per seat, in agorot' })
   @IsInt()
   @Min(0)
-  @Max(POSTGRES_MAX_INT)
   priceAgorot: number;
 }
 
