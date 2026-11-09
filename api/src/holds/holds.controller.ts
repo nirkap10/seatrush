@@ -20,6 +20,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { requireUsername } from '../users/username-header.js';
+import { BestAvailableDto } from './dto/best-available.dto.js';
 import { CreateHoldDto } from './dto/create-hold.dto.js';
 import { HoldsService } from './holds.service.js';
 
@@ -36,7 +37,10 @@ export class HoldsController {
   @ApiBadRequestResponse({ description: 'Bad request, or a seat not found' })
   @ApiForbiddenResponse({ description: 'Tickets are not on sale yet' })
   @ApiNotFoundResponse({ description: 'No event with this id' })
-  @ApiConflictResponse({ description: 'A seat is taken, or over the limit' })
+  @ApiConflictResponse({
+    description:
+      'A seat is taken, it would leave a lone seat, or over the limit',
+  })
   createHold(
     @Param('id', ParseIntPipe) eventId: number,
     @Headers('x-username') username: string | undefined,
@@ -46,6 +50,29 @@ export class HoldsController {
       eventId,
       requireUsername(username),
       dto.seats,
+    );
+  }
+
+  @Post('events/:id/holds/best-available')
+  @ApiOperation({
+    summary: 'Hold the best N seats side by side in one row',
+    description:
+      'Nearest row to the stage first, then the block closest to the middle of the row, then the lower first seat. Never leaves a single seat alone.',
+  })
+  @ApiCreatedResponse({ description: 'The hold, its seats and expiry time' })
+  @ApiBadRequestResponse({ description: 'The request is not valid' })
+  @ApiForbiddenResponse({ description: 'Tickets are not on sale yet' })
+  @ApiNotFoundResponse({ description: 'No event with this id' })
+  @ApiConflictResponse({ description: 'Nothing fits, or over the limit' })
+  holdBestAvailable(
+    @Param('id', ParseIntPipe) eventId: number,
+    @Headers('x-username') username: string | undefined,
+    @Body() dto: BestAvailableDto,
+  ) {
+    return this.holdsService.holdBestAvailable(
+      eventId,
+      requireUsername(username),
+      dto,
     );
   }
 

@@ -93,15 +93,17 @@ export class EventsService {
       order: { fromRow: 'ASC' },
     });
 
-    // A seat is held while its latest hold is active and not expired.
-    // Sold seats come with orders (stage 4).
+    // Sold when it has an order. Held while its latest hold is active and
+    // not expired. Otherwise available.
     const seats: unknown[] = await this.dataSource.query(
       `SELECT seats.label,
               seats.row_letter  AS "rowLetter",
               seats.seat_number AS "seatNumber",
               seats.zone_id     AS "zoneId",
-              CASE WHEN holds.status = 'active' AND holds.expires_at > now()
-                   THEN 'held' ELSE 'available' END AS status
+              CASE WHEN seats.order_id IS NOT NULL THEN 'sold'
+                   WHEN holds.status = 'active' AND holds.expires_at > now()
+                   THEN 'held'
+                   ELSE 'available' END AS status
        FROM seats
        LEFT JOIN holds ON holds.id = seats.hold_id
        WHERE seats.event_id = $1

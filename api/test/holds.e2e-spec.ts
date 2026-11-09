@@ -28,6 +28,7 @@ describe('holds API (real database)', () => {
   afterAll(async () => {
     const ids = [createdEventIds];
     await dataSource.query('DELETE FROM seats WHERE event_id = ANY($1)', ids);
+    await dataSource.query('DELETE FROM orders WHERE event_id = ANY($1)', ids);
     await dataSource.query('DELETE FROM holds WHERE event_id = ANY($1)', ids);
     await dataSource.query('DELETE FROM zones WHERE event_id = ANY($1)', ids);
     await dataSource.query('DELETE FROM events WHERE id = ANY($1)', ids);
@@ -37,8 +38,16 @@ describe('holds API (real database)', () => {
     await app.close();
   });
 
-  // A new event for each test: rows A to C, 6 seats per row.
-  async function createEvent(dropAt = '2020-01-01T10:00:00Z') {
+  const oneZone = [
+    { name: 'All', fromRow: 'A', toRow: 'C', priceAgorot: 10000 },
+  ];
+
+  // A new event for each test: rows A to C, 6 seats per row by default.
+  async function createEvent(
+    dropAt = '2020-01-01T10:00:00Z',
+    seatsPerRow = 6,
+    zones = oneZone,
+  ) {
     const response = await request(url)
       .post('/events')
       .send({
@@ -47,8 +56,8 @@ describe('holds API (real database)', () => {
         startsAt: '2030-07-01T20:00:00Z',
         dropAt,
         rowCount: 3,
-        seatsPerRow: 6,
-        zones: [{ name: 'All', fromRow: 'A', toRow: 'C', priceAgorot: 10000 }],
+        seatsPerRow,
+        zones,
       })
       .expect(201);
     createdEventIds.push(response.body.event.id);
@@ -134,7 +143,8 @@ describe('holds API (real database)', () => {
 
   it('keeps the limit when one fan sends many holds at once', async () => {
     const eventId = await createEvent();
-    const seats = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6'];
+    // Seats at the ends of rows, so no hold can leave a lone seat.
+    const seats = ['A1', 'A6', 'B1', 'B6', 'C1', 'C6'];
 
     const responses = await Promise.all(
       seats.map((seat) => hold(eventId, fan('rush'), [seat])),
@@ -171,7 +181,7 @@ describe('holds API (real database)', () => {
 
   it('lets only the owner release a hold', async () => {
     const eventId = await createEvent();
-    const { body } = await hold(eventId, fan('dana'), ['C2']).expect(201);
+    const { body } = await hold(eventId, fan('dana'), ['C1']).expect(201);
 
     const response = await request(url)
       .delete(`/holds/${body.id}`)
@@ -199,5 +209,77 @@ describe('holds API (real database)', () => {
       .set('X-Username', fan('dana'))
       .expect(409);
     await hold(eventId, fan('yossi'), ['C3']).expect(201);
+  });
+
+  it('rejects a hold that would leave a single seat alone', async () => {
+    const eventId = await createEvent();
+
+    const response = await hold(eventId, fan('dana'), ['A2']).expect(409);
+
+    expect(response.body.message).toContain('That would leave A1 empty');
+  });
+
+  describe('best available', () => {
+    // Front is row A, Back is rows B and C. 8 seats per row.
+    const twoZones = [
+      { name: 'Front', fromRow: 'A', toRow: 'A', priceAgorot: 20000 },
+      { name: 'Back', fromRow: 'B', toRow: 'C', priceAgorot: 10000 },
+    ];
+
+    function bestAvailable(eventId: number, username: string, body: object) {
+      return request(url)
+        .post(`/events/${eventId}/holds/best-available`)
+        .set('X-Username', username)
+        .send(body);
+    }
+
+    it("solves the brief's example: row A full, B4 and B5 sold", async () => {
+      const eventId = await createEvent(undefined, 8, twoZones);
+      await hold(eventId, fan('a1'), ['A1', 'A2', 'A3', 'A4']).expect(201);
+      await hold(eventId, fan('a2'), ['A5', 'A6', 'A7', 'A8']).expect(201);
+      const sold = await hold(eventId, fan('b'), ['B4', 'B5']).expect(201);
+      await request(url)
+        .post(`/holds/${sold.body.id}/checkout`)
+        .set('X-Username', fan('b'))
+        .expect(200);
+
+      const response = await bestAvailable(eventId, fan('dana'), {
+        count: 2,
+      }).expect(201);
+
+      // Every pair in row B would leave a lone seat, so row C wins.
+      expect(response.body.seats).toEqual(['C4', 'C5']);
+    });
+
+    it('applies the max price filter', async () => {
+      const eventId = await createEvent(undefined, 8, twoZones);
+
+      const response = await bestAvailable(eventId, fan('dana'), {
+        count: 2,
+        maxPriceAgorot: 10000,
+      }).expect(201);
+
+      expect(response.body.seats).toEqual(['B4', 'B5']);
+    });
+
+    it('applies the zone filter', async () => {
+      const eventId = await createEvent(undefined, 8, twoZones);
+
+      const response = await bestAvailable(eventId, fan('dana'), {
+        count: 3,
+        zone: 'Back',
+      }).expect(201);
+
+      expect(response.body.seats).toEqual(['B3', 'B4', 'B5']);
+    });
+
+    it('rejects the request when nothing fits', async () => {
+      const eventId = await createEvent(undefined, 8, twoZones);
+
+      await bestAvailable(eventId, fan('dana'), {
+        count: 2,
+        zone: 'Balcony',
+      }).expect(409);
+    });
   });
 });

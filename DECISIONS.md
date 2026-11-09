@@ -51,6 +51,15 @@ The project is still being built, so these describe the plan and may change.
 - A request can ask for 1 to 4 seats, the same as a normal hold.
 - Asking for more seats than the fan's limit allows is rejected, even if the seats exist.
 - The max price filter includes seats priced exactly at that amount.
+- A zone name that doesn't exist in the event is treated like any filter nothing fits: the request is rejected with "No 2 seats side by side are available for your choice".
+- The row's middle is (seats per row + 1) / 2, and a block's middle is its first seat + (N - 1) / 2. Within a row, the search goes left to right and stops once a block is no closer to the middle than the best one found, since every later block is further away.
+
+### No lone seats (extra credit)
+
+- A lone seat is a free seat with a taken seat or the row's end on each side. Price and zone filters don't make a seat "taken": a seat the fan can't afford is still free for someone else.
+- A normal hold that would create a new lone seat is rejected, and the message names the seat, for example "That would leave A1 empty on its own".
+- Best available skips blocks that would create one. So in the brief's example the answer is C4–C5, not B2–B3.
+- A hold across two rows is checked in each row.
 
 ### Checkout
 
@@ -58,6 +67,9 @@ The project is still being built, so these describe the plan and may change.
 - If a hold already has an order, checking out again returns that order to its owner, even after the hold's expiry time.
 - A fan who doesn't own the hold is rejected, even if an order already exists.
 - A released hold can't be checked out, and a hold that became an order can't be released.
+- An order's total is the sum of its seats' zone prices at checkout, and it's stored on the order, so it stays correct even if something changes later.
+- A sold seat keeps its `hold_id` and gets an `order_id`. `order_id` is what makes it sold.
+- Checkout answers 200 both the first time and when it returns the existing order.
 
 ### Screens
 

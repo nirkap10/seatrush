@@ -6,8 +6,10 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { CreateEventsZonesSeats1794009600000 } from './database/migrations/1794009600000-create-events-zones-seats.js';
 import { CreateUsersHolds1794096000000 } from './database/migrations/1794096000000-create-users-holds.js';
+import { CreateOrders1794182400000 } from './database/migrations/1794182400000-create-orders.js';
 import { EventsModule } from './events/events.module.js';
 import { HoldsModule } from './holds/holds.module.js';
+import { OrdersModule } from './orders/orders.module.js';
 import { UsersModule } from './users/users.module.js';
 
 const LOCAL_DATABASE_URL =
@@ -26,6 +28,7 @@ const LOCAL_DATABASE_URL =
         migrations: [
           CreateEventsZonesSeats1794009600000,
           CreateUsersHolds1794096000000,
+          CreateOrders1794182400000,
         ],
         migrationsRun: true,
       }),
@@ -33,6 +36,7 @@ const LOCAL_DATABASE_URL =
     EventsModule,
     UsersModule,
     HoldsModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [
