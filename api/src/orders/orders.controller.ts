@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   Headers,
@@ -9,7 +8,6 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
   ApiConflictResponse,
   ApiForbiddenResponse,
   ApiHeader,
@@ -20,7 +18,6 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { requireUsername } from '../users/username-header.js';
-import { CheckoutDto } from './checkout.dto.js';
 import { OrdersService } from './orders.service.js';
 
 @ApiTags('orders')
@@ -35,25 +32,17 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Buy the seats in a hold',
     description:
-      'One order per hold: checking out again returns the same order. ' +
-      'Optional promo code: SAVE10 takes 10% off (rounded half up to the agora), ' +
-      'WELCOME20 takes 20.00 off once per fan ever. The total never goes below 0.',
+      'One order per hold: checking out again returns the same order.',
   })
   @ApiOkResponse({ description: 'The order, with its seats and total' })
-  @ApiBadRequestResponse({ description: 'Unknown or already used promo code' })
   @ApiForbiddenResponse({ description: 'Not your hold' })
   @ApiNotFoundResponse({ description: 'No hold with this id' })
   @ApiConflictResponse({ description: 'The hold expired or was released' })
   checkout(
     @Param('id', ParseIntPipe) holdId: number,
     @Headers('x-username') username: string | undefined,
-    @Body() body: CheckoutDto,
   ) {
-    return this.ordersService.checkout(
-      holdId,
-      requireUsername(username),
-      body.promoCode,
-    );
+    return this.ordersService.checkout(holdId, requireUsername(username));
   }
 
   @Get('me/orders')

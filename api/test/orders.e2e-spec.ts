@@ -68,11 +68,10 @@ describe('checkout and my tickets (real database)', () => {
     return response.body.id as number;
   }
 
-  function checkout(holdId: number, username: string, promoCode?: string) {
+  function checkout(holdId: number, username: string) {
     return request(url)
       .post(`/holds/${holdId}/checkout`)
-      .set('X-Username', username)
-      .send(promoCode ? { promoCode } : {});
+      .set('X-Username', username);
   }
 
   it('creates an order and the seats become sold', async () => {
@@ -160,91 +159,5 @@ describe('checkout and my tickets (real database)', () => {
     expect(response.body).toHaveLength(2);
     expect(response.body[0].seats).toEqual(['C6']);
     expect(response.body[0].eventName).toBe('Checkout Test');
-  });
-
-  it('SAVE10 takes 10% off, and works on every order', async () => {
-    const eventId = await createEvent();
-    // 200.00 + 100.00 = 300.00, minus 30.00
-    const first = await checkout(
-      await hold(eventId, fan('save'), ['A1', 'B1']),
-      fan('save'),
-      'SAVE10',
-    ).expect(200);
-    const second = await checkout(
-      await hold(eventId, fan('save'), ['C1']),
-      fan('save'),
-      'SAVE10',
-    ).expect(200);
-
-    expect(first.body.totalAgorot).toBe(27000);
-    expect(first.body.discountAgorot).toBe(3000);
-    expect(first.body.promoCode).toBe('SAVE10');
-    expect(second.body.totalAgorot).toBe(9000);
-  });
-
-  it('WELCOME20 takes 20.00 off, once per fan ever', async () => {
-    const eventId = await createEvent();
-    const first = await checkout(
-      await hold(eventId, fan('welcome'), ['B1']),
-      fan('welcome'),
-      'WELCOME20',
-    ).expect(200);
-    const secondHold = await hold(eventId, fan('welcome'), ['B2']);
-    const reused = await checkout(secondHold, fan('welcome'), 'WELCOME20');
-
-    expect(first.body.totalAgorot).toBe(8000);
-    expect(reused.status).toBe(400);
-    expect(reused.body.message).toBe('You already used WELCOME20');
-    // The rejected code changed nothing: the fan can still buy without it.
-    await checkout(secondHold, fan('welcome')).expect(200);
-  });
-
-  it('checking out again with WELCOME20 returns the same order', async () => {
-    const eventId = await createEvent();
-    const holdId = await hold(eventId, fan('again'), ['B1']);
-
-    const first = await checkout(holdId, fan('again'), 'WELCOME20').expect(200);
-    const second = await checkout(holdId, fan('again'), 'WELCOME20').expect(
-      200,
-    );
-
-    expect(second.body.id).toBe(first.body.id);
-  });
-
-  it('uses up WELCOME20 only when an order is created', async () => {
-    const eventId = await createEvent();
-    const expired = await hold(eventId, fan('later'), ['B1']);
-    await dataSource.query(
-      "UPDATE holds SET expires_at = now() - interval '1 second' WHERE id = $1",
-      [expired],
-    );
-    await checkout(expired, fan('later'), 'WELCOME20').expect(409);
-
-    const holdId = await hold(eventId, fan('later'), ['B3']);
-    await checkout(holdId, fan('later'), 'WELCOME20').expect(200);
-  });
-
-  it('lets only one of two checkouts at once use WELCOME20', async () => {
-    const eventId = await createEvent();
-    const holdA = await hold(eventId, fan('race'), ['B1']);
-    const holdB = await hold(eventId, fan('race'), ['B2']);
-
-    const results = await Promise.all([
-      checkout(holdA, fan('race'), 'WELCOME20'),
-      checkout(holdB, fan('race'), 'WELCOME20'),
-    ]);
-
-    expect(results.map((r) => r.status).sort((a, b) => a - b)).toEqual([
-      200, 400,
-    ]);
-  });
-
-  it('rejects an unknown promo code', async () => {
-    const eventId = await createEvent();
-    const holdId = await hold(eventId, fan('dana'), ['A1']);
-
-    const response = await checkout(holdId, fan('dana'), 'FREE').expect(400);
-
-    expect(response.body.message).toBe('FREE is not a promo code we know');
   });
 });

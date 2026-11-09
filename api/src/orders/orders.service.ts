@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -8,7 +7,6 @@ import {
 import { DataSource, EntityManager } from 'typeorm';
 import { HoldStatus } from '../holds/hold.entity.js';
 import { UsersService } from '../users/users.service.js';
-import { discountFor } from './promo.js';
 
 @Injectable()
 export class OrdersService {
@@ -17,7 +15,7 @@ export class OrdersService {
     private readonly usersService: UsersService,
   ) {}
 
-  async checkout(holdId: number, username: string, promoCode?: string) {
+  async checkout(holdId: number, username: string) {
     const user = await this.usersService.findOrCreate(username);
 
     return this.dataSource.transaction(async (manager) => {
@@ -75,34 +73,10 @@ export class OrdersService {
          WHERE seats.hold_id = $1`,
         [holdId],
       );
-      const total = totals[0].total;
-      const discount = promoCode ? discountFor(promoCode, total) : 0;
-
-      // WELCOME20 is once per fan ever. Only one transaction can flip the flag
-      // from false to true, so two checkouts at once can't both use it.
-      if (promoCode === 'WELCOME20') {
-        const [, changed]: [unknown, number] = await manager.query(
-          `UPDATE users SET welcome20_used = true
-           WHERE id = $1 AND welcome20_used = false`,
-          [user.id],
-        );
-        if (changed === 0) {
-          throw new BadRequestException('You already used WELCOME20');
-        }
-      }
-
       const orders: { id: number }[] = await manager.query(
-        `INSERT INTO orders
-           (hold_id, user_id, event_id, total_agorot, promo_code, discount_agorot)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [
-          holdId,
-          user.id,
-          hold.eventId,
-          total - discount,
-          promoCode ?? null,
-          discount,
-        ],
+        `INSERT INTO orders (hold_id, user_id, event_id, total_agorot)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [holdId, user.id, hold.eventId, totals[0].total],
       );
       await manager.query('UPDATE seats SET order_id = $1 WHERE hold_id = $2', [
         orders[0].id,
@@ -149,8 +123,6 @@ export class OrdersService {
               events.venue,
               events.starts_at    AS "startsAt",
               orders.total_agorot AS "totalAgorot",
-              orders.promo_code   AS "promoCode",
-              orders.discount_agorot AS "discountAgorot",
               orders.created_at   AS "createdAt",
               array_agg(seats.label ORDER BY seats.row_letter, seats.seat_number) AS seats
        FROM orders

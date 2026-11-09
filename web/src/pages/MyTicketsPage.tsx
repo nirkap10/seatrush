@@ -62,10 +62,7 @@ export function MyTicketsPage(props: { username: string }) {
               ))}
             </Stack>
             <Typography>
-              Paid {formatPrice(order.totalAgorot)}
-              {order.promoCode &&
-                ` (saved ${formatPrice(order.discountAgorot)} with ${order.promoCode})`}{' '}
-              · Order #{order.id} ·{' '}
+              Paid {formatPrice(order.totalAgorot)} · Order #{order.id} ·{' '}
               {formatDateTime(order.createdAt)}
             </Typography>
           </CardContent>

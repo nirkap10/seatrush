@@ -7,7 +7,6 @@ import { AppService } from './app.service.js';
 import { CreateEventsZonesSeats1794009600000 } from './database/migrations/1794009600000-create-events-zones-seats.js';
 import { CreateUsersHolds1794096000000 } from './database/migrations/1794096000000-create-users-holds.js';
 import { CreateOrders1794182400000 } from './database/migrations/1794182400000-create-orders.js';
-import { AddPromoCodes1794268800000 } from './database/migrations/1794268800000-add-promo-codes.js';
 import { EventsModule } from './events/events.module.js';
 import { HoldsModule } from './holds/holds.module.js';
 import { OrdersModule } from './orders/orders.module.js';
@@ -30,7 +29,6 @@ const LOCAL_DATABASE_URL =
           CreateEventsZonesSeats1794009600000,
           CreateUsersHolds1794096000000,
           CreateOrders1794182400000,
-          AddPromoCodes1794268800000,
         ],
         migrationsRun: true,
       }),
