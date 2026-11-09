@@ -117,6 +117,7 @@ Where the brief was silent or unclear, I assumed the following.
 - An admin screen and admin login, instead of an open endpoint.
 - More arena layouts: rows with different numbers of seats, aisles, and zones that cover part of a row (side zones, balconies) instead of only whole rows. Best available would then also need a zone filter on the screen.
 - Clear out old holds and keep a log of every hold, release and order.
+- Automated tests for the screens (React Testing Library for components, Playwright for whole flows in a real browser). Today they are tested by hand, with two browser windows.
 
 ## Two short answers
 
