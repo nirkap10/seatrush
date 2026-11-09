@@ -15,5 +15,26 @@ services:
       timeout: 3s
       retries: 15
 
+  api:
+    build: ./api
+    environment:
+      # Inside Docker, the database's address is its service name, db.
+      DATABASE_URL: postgres://seatrush:seatrush@db:5432/seatrush
+      PORT: 3000
+      HOLD_TTL_SECONDS: ${HOLD_TTL_SECONDS:-300}
+      MAX_SEATS_PER_USER: ${MAX_SEATS_PER_USER:-4}
+    ports:
+      - '3000:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    ports:
+      - '5173:5173'
+    depends_on:
+      - api
+
 volumes:
   db-data:
