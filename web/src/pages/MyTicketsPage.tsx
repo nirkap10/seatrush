@@ -9,8 +9,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { api } from '../api.ts';
+import { api, serverDown } from '../api.ts';
 import { formatPrice } from '../money.ts';
 import { formatDateTime } from '../time.ts';
 import type { Order } from '../types.ts';
@@ -25,13 +24,14 @@ export function MyTicketsPage(props: { username: string }) {
     return <CircularProgress />;
   }
   if (orders.isError) {
-    return (
-      <Alert
-        severity="error"
-        action={<Button onClick={() => orders.refetch()}>Try again</Button>}
-      >
+    const retry = <Button onClick={() => orders.refetch()}>Try again</Button>;
+    // Only explain when our side collapsed. Otherwise, just offer to retry.
+    return serverDown(orders.error) ? (
+      <Alert severity="error" action={retry}>
         {orders.error.message}
       </Alert>
+    ) : (
+      retry
     );
   }
 
@@ -43,7 +43,7 @@ export function MyTicketsPage(props: { username: string }) {
 
       {orders.data.length === 0 && (
         <Typography>
-          No tickets yet. <Link to="/">Browse the events</Link> to find seats.
+          No tickets yet.
         </Typography>
       )}
 

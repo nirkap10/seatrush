@@ -24,6 +24,15 @@ export function SeatMap(props: {
     rows.set(seat.rowLetter, [...(rows.get(seat.rowLetter) ?? []), seat]);
   }
 
+  // Every seat fits on one screen, with no scrolling. Each "cell" (a seat
+  // plus its gap) is the smallest of: the width split between the seats
+  // (+1 for the row letter), the screen height split between the rows
+  // (minus about 320px for the top of the page), and 34px for small events.
+  const seatsPerRow = rows.values().next().value?.length ?? 1;
+  const cell = `min(calc(100cqw / ${seatsPerRow + 1}), calc((100vh - 320px) / ${rows.size}), 34px)`;
+  // Numbers only fit on the seats when the rows are short.
+  const showNumbers = seatsPerRow <= 30;
+
   function colorOf(seat: Seat) {
     if (props.mySeats.includes(seat.label)) return RED;
     if (seat.status === 'sold') return SOLD;
@@ -47,7 +56,8 @@ export function SeatMap(props: {
         <Legend color={SOLD} text="Sold" />
       </Stack>
 
-      <Box sx={{ overflowX: 'auto', pb: 1 }}>
+      {/* containerType lets the cells measure this box's width (cqw) */}
+      <Box sx={{ containerType: 'inline-size' }}>
         <Box
           sx={{
             bgcolor: NAVY,
@@ -57,7 +67,6 @@ export function SeatMap(props: {
             py: 0.5,
             mb: 2,
             fontWeight: 600,
-            minWidth: 'max-content',
           }}
         >
           STAGE
@@ -67,10 +76,21 @@ export function SeatMap(props: {
           <Stack
             key={letter}
             direction="row"
-            spacing={0.5}
-            sx={{ mb: 0.5, alignItems: 'center', justifyContent: 'center' }}
+            sx={{
+              gap: `calc(${cell} * 0.15)`,
+              mb: `calc(${cell} * 0.15)`,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            <Typography sx={{ width: 24, fontWeight: 700, color: NAVY }}>
+            <Typography
+              sx={{
+                width: `calc(${cell} * 0.85)`,
+                fontSize: `min(14px, calc(${cell} * 0.5))`,
+                fontWeight: 700,
+                color: NAVY,
+              }}
+            >
               {letter}
             </Typography>
             {rowSeats.map((seat) => {
@@ -92,20 +112,21 @@ export function SeatMap(props: {
                     aria-label={`Seat ${seat.label}, ${seat.status}`}
                     aria-pressed={isSelected}
                     sx={{
-                      width: 30,
-                      height: 30,
+                      width: `calc(${cell} * 0.85)`,
+                      height: `calc(${cell} * 0.85)`,
                       flexShrink: 0,
-                      border: isSelected ? `3px solid ${RED}` : 'none',
-                      borderRadius: '8px 8px 4px 4px',
+                      padding: 0,
+                      border: isSelected ? `2px solid ${RED}` : 'none',
+                      borderRadius: '30% 30% 15% 15%',
                       bgcolor: isSelected ? 'white' : colorOf(seat),
                       color: isSelected ? RED : 'white',
-                      fontSize: 11,
+                      fontSize: `calc(${cell} * 0.35)`,
                       fontWeight: 700,
                       fontFamily: 'inherit',
                       cursor: canPick ? 'pointer' : 'not-allowed',
                     }}
                   >
-                    {seat.seatNumber}
+                    {showNumbers && seat.seatNumber}
                   </Box>
                 </Tooltip>
               );

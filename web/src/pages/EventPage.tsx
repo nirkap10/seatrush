@@ -10,8 +10,8 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { api, ApiError } from '../api.ts';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { api, ApiError, serverDown } from '../api.ts';
 import {
   BestAvailableForm,
   type BestAvailableRequest,
@@ -167,13 +167,29 @@ export function EventPage(props: { username: string | null }) {
     return <CircularProgress />;
   }
   if (!data) {
-    return (
-      <Alert
-        severity="error"
-        action={<Button onClick={() => query.refetch()}>Try again</Button>}
-      >
-        {query.error?.message}
+    // A wrong or old link: trying again won't help.
+    if (query.error instanceof ApiError && query.error.status === 404) {
+      return (
+        <Alert
+          severity="info"
+          action={
+            <Button component={Link} to="/">
+              Back to events
+            </Button>
+          }
+        >
+          We couldn't find this event.
+        </Alert>
+      );
+    }
+    const retry = <Button onClick={() => query.refetch()}>Try again</Button>;
+    // Only explain when our side collapsed. Otherwise, just offer to retry.
+    return query.error && serverDown(query.error) ? (
+      <Alert severity="error" action={retry}>
+        {query.error.message}
       </Alert>
+    ) : (
+      retry
     );
   }
 
@@ -217,8 +233,7 @@ export function EventPage(props: { username: string | null }) {
             {formatCountdown(msToDrop)}
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 1 }}>
-            {formatDateTime(data.event.dropAt)}. The seat map opens right here,
-            no need to refresh.
+            {formatDateTime(data.event.dropAt)}
           </Typography>
         </Paper>
       ) : (

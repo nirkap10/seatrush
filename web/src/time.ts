@@ -13,7 +13,7 @@ export function useNow(): number {
   return now;
 }
 
-// True once `busy` has lasted more than 3 seconds, for a calm "hang on" note.
+// True once `busy` has lasted more than 10 seconds, for a calm "hang on" note.
 export function useSlow(busy: boolean): boolean {
   const [slow, setSlow] = useState(false);
 
@@ -21,7 +21,7 @@ export function useSlow(busy: boolean): boolean {
     if (!busy) {
       return;
     }
-    const timer = setTimeout(() => setSlow(true), 3000);
+    const timer = setTimeout(() => setSlow(true), 10_000);
     // When it's no longer busy, cancel the timer and hide the note.
     return () => {
       clearTimeout(timer);

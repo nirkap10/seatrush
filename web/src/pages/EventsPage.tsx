@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { api } from '../api.ts';
+import { api, serverDown } from '../api.ts';
 import { formatCountdown, formatDateTime, useNow } from '../time.ts';
 
 // One event, as GET /events sends it. Dates arrive as text (ISO format).
@@ -36,13 +36,14 @@ export function EventsPage() {
     return <CircularProgress />;
   }
   if (events.isError) {
-    return (
-      <Alert
-        severity="error"
-        action={<Button onClick={() => events.refetch()}>Try again</Button>}
-      >
+    const retry = <Button onClick={() => events.refetch()}>Try again</Button>;
+    // Only explain when our side collapsed. Otherwise, just offer to retry.
+    return serverDown(events.error) ? (
+      <Alert severity="error" action={retry}>
         {events.error.message}
       </Alert>
+    ) : (
+      retry
     );
   }
 

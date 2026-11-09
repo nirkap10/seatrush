@@ -5,6 +5,15 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 // Where the logged-in username is kept, one per browser window (step 5).
 export const USERNAME_KEY = 'seatrush-username';
 
+// When the API or the database collapsed: no answer at all, or a 500 error.
+const SORRY =
+  "We're sorry, something went wrong on our side. Please try again later.";
+
+// True when the error is our side collapsing, not something the fan did.
+export function serverDown(error: Error): boolean {
+  return error instanceof ApiError && (error.status === 0 || error.status >= 500);
+}
+
 // An error from the API, with the server's own message, such as
 // "Someone just took B3", and its HTTP status, such as 409.
 export class ApiError extends Error {
@@ -41,20 +50,20 @@ export async function api<T>(
   } catch {
     // fetch only throws when there's no answer at all: the server is down,
     // or the fan is offline.
-    throw new ApiError(
-      "Can't reach SeatRush right now. Please check your connection and try again.",
-      0,
-    );
+    throw new ApiError(SORRY, 0);
   }
 
   const data = await response.json().catch(() => null);
+  if (response.status >= 500) {
+    throw new ApiError(SORRY, response.status);
+  }
   if (!response.ok) {
     // NestJS sends { message: '...' }, or a list of messages for bad input.
     const message = Array.isArray(data?.message)
       ? data.message.join('. ')
       : data?.message;
     throw new ApiError(
-      message ?? 'Something went wrong. Please try again.',
+      message ?? SORRY,
       response.status,
     );
   }

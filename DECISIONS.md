@@ -21,7 +21,7 @@ The project is still being built, so these describe the plan and may change.
 - A username that doesn't exist yet is created automatically.
 - Visitors can see the events list and the seat map without logging in. Holding seats, checkout and My tickets ask them to log in first. Confirmed by Harel.
 - A username is 1 to 30 English letters, numbers, `_` or `-`, because HTTP headers can only carry plain English characters. Usernames are case-sensitive, so `Dana` and `dana` are two different fans, and spaces aren't allowed. Confirmed by Harel.
-- The logged-in user is kept per browser window (`sessionStorage`), so two windows of the same browser can be two different fans. Closing a window logs that fan out, and they can log back in with the same username.
+- The logged-in user is kept per browser window (`sessionStorage`), so two windows of the same browser can be two different fans. Closing a window logs that fan out, and they can log back in with the same username. Their holds and tickets are kept on the server, so nothing is lost. Confirmed by Harel.
 
 ### Events and seats
 
@@ -64,7 +64,7 @@ The project is still being built, so these describe the plan and may change.
 
 ### Checkout
 
-- Checkout buys all the seats in a hold. A fan who wants fewer seats releases the hold and makes a new one.
+- Checkout buys all the seats in a hold. A fan who wants fewer seats releases the hold and makes a new one. Confirmed by Harel.
 - If a hold already has an order, checking out again returns that order to its owner, even after the hold's expiry time.
 - A fan who doesn't own the hold is rejected, even if an order already exists.
 - A released hold can't be checked out, and a hold that became an order can't be released.
