@@ -19,6 +19,7 @@ The project is still being built, so these describe the plan and may change.
 
 - A fan is identified by a username sent in an `X-Username` header, with no password. Anyone can act as any username, which is acceptable because the brief asks for no passwords.
 - A username that doesn't exist yet is created automatically.
+- Visitors can see the events list and the seat map without logging in. Holding seats, checkout and My tickets ask them to log in first. Confirmed by Harel.
 - A username is 1 to 30 English letters, numbers, `_` or `-`, because HTTP headers can only carry plain English characters. Usernames are case-sensitive, so `Dana` and `dana` are two different fans, and spaces aren't allowed. Confirmed by Harel.
 - The logged-in user is kept per browser window (`sessionStorage`), so two windows of the same browser can be two different fans. Closing a window logs that fan out, and they can log back in with the same username.
 
