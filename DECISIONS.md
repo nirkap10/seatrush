@@ -111,6 +111,7 @@ Where the brief was silent or unclear, I assumed the following.
 ## What I'd still change before a real launch
 
 - A finer lock: lock the fan's row and the rows of seats a hold touches, always in the same order so two holds can't deadlock, instead of the whole event. Holds in different parts of the same event would then stop waiting for each other. The fan's row must stay locked, or one fan's parallel holds could pass the seat limit together.
+- Push seat changes to the screens (WebSockets or server-sent events), and send only what changed, instead of every fan downloading the whole seat map every 2 seconds.
 - A waiting room in front of the drop, letting fans in at a steady rate.
 - Real accounts with passwords or sign-in, and a limit on requests per fan.
 - An admin screen and admin login, instead of an open endpoint.
@@ -119,6 +120,6 @@ Where the brief was silent or unclear, I assumed the following.
 
 ## Two short answers
 
-**What breaks first if 100,000 fans arrive in the first minute?** The polling. Each open event page asks for the whole seat map every 2 seconds, so 100,000 fans means about 50,000 requests a second, each one a database query. The database connections (about 10 per API copy) and the database itself run out first. After that, the event lock: every hold for the event waits in one queue. Fixes: cache the seat map or push only the changes, a waiting room, more API copies with a connection pooler, and the finer lock above.
+**What breaks first if 100,000 fans arrive in the first minute?** The seat map requests. Each fan's page loads the whole seat map (`GET /events/:id`) and asks for it again every 2 seconds, so 100,000 fans means 50,000 or more requests a second, each one needing database queries. Each API copy has only about 10 database connections, so requests pile up, slow down and time out, before most fans even get to click Hold.
 
 **Does your protection still work with 3 copies of the API?** Yes. The lock is kept by PostgreSQL, not in the API's memory. All 3 copies use the same database, so a request from any copy waits for the lock the same way. Time checks also use the database clock, so the copies agree on when a hold expires.
