@@ -21,7 +21,7 @@ function App() {
     setUsername(name);
   }
 
-  function switchUser() {
+  function logOut() {
     sessionStorage.removeItem(USERNAME_KEY);
     setUsername(null);
     navigate('/login');
@@ -29,7 +29,7 @@ function App() {
 
   return (
     <>
-      <TopBar username={username} onSwitchUser={switchUser} />
+      <TopBar username={username} onLogOut={logOut} />
       <Container sx={{ py: 4 }}>
         {/* Shows the one page whose path matches the address */}
         <Routes>

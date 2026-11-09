@@ -76,6 +76,7 @@ The project is still being built, so these describe the plan and may change.
 
 - Seats refresh without reloading the page, by polling the server every 2 seconds.
 - The screens are in English, like the brief.
+- The best available box on the screen has only a max price filter, as a dropdown of this event's prices. Zones are bands of rows from the stage back, with no side zones, and best available already searches from the row nearest the stage backward. So choosing a max price is enough to pick which rows a fan wants. The API still has the zone filter, as the brief asks.
 
 ### Testing and API
 
