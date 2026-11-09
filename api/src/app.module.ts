@@ -5,7 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { CreateEventsZonesSeats1794009600000 } from './database/migrations/1794009600000-create-events-zones-seats.js';
+import { CreateUsersHolds1794096000000 } from './database/migrations/1794096000000-create-users-holds.js';
 import { EventsModule } from './events/events.module.js';
+import { HoldsModule } from './holds/holds.module.js';
+import { UsersModule } from './users/users.module.js';
 
 const LOCAL_DATABASE_URL =
   'postgres://seatrush:seatrush@localhost:5432/seatrush';
@@ -20,11 +23,16 @@ const LOCAL_DATABASE_URL =
         url: config.get<string>('DATABASE_URL', LOCAL_DATABASE_URL),
         autoLoadEntities: true,
         synchronize: false,
-        migrations: [CreateEventsZonesSeats1794009600000],
+        migrations: [
+          CreateEventsZonesSeats1794009600000,
+          CreateUsersHolds1794096000000,
+        ],
         migrationsRun: true,
       }),
     }),
     EventsModule,
+    UsersModule,
+    HoldsModule,
   ],
   controllers: [AppController],
   providers: [

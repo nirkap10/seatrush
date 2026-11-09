@@ -10,6 +10,7 @@ import { Event } from './event.entity.js';
 import { buildSeats, findZoneProblem } from './seat-map.js';
 import { Seat } from './seat.entity.js';
 import { Zone } from './zone.entity.js';
+import { UsersService } from '../users/users.service.js';
 
 @Injectable()
 export class EventsService {
@@ -17,6 +18,7 @@ export class EventsService {
     private readonly dataSource: DataSource,
     @InjectRepository(Event) private readonly events: Repository<Event>,
     @InjectRepository(Zone) private readonly zones: Repository<Zone>,
+    private readonly usersService: UsersService,
   ) {}
 
   async createEvent(dto: CreateEventDto) {
@@ -80,7 +82,7 @@ export class EventsService {
     return this.events.find({ order: { dropAt: 'ASC', id: 'ASC' } });
   }
 
-  async getEvent(id: number) {
+  async getEvent(id: number, username?: string) {
     const event = await this.events.findOneBy({ id });
     if (!event) {
       throw new NotFoundException(`Event ${id} was not found`);
@@ -91,19 +93,42 @@ export class EventsService {
       order: { fromRow: 'ASC' },
     });
 
-    // Every seat is available until holds and orders exist (stages 3 and 4).
+    // A seat is held while its latest hold is active and not expired.
+    // Sold seats come with orders (stage 4).
     const seats: unknown[] = await this.dataSource.query(
-      `SELECT label,
-              row_letter  AS "rowLetter",
-              seat_number AS "seatNumber",
-              zone_id     AS "zoneId",
-              'available' AS status
+      `SELECT seats.label,
+              seats.row_letter  AS "rowLetter",
+              seats.seat_number AS "seatNumber",
+              seats.zone_id     AS "zoneId",
+              CASE WHEN holds.status = 'active' AND holds.expires_at > now()
+                   THEN 'held' ELSE 'available' END AS status
        FROM seats
-       WHERE event_id = $1
-       ORDER BY row_letter, seat_number`,
+       LEFT JOIN holds ON holds.id = seats.hold_id
+       WHERE seats.event_id = $1
+       ORDER BY seats.row_letter, seats.seat_number`,
       [id],
     );
 
-    return { event, zones, seats };
+    const user = username ? await this.usersService.find(username) : null;
+    const myHolds: unknown[] = user
+      ? await this.dataSource.query(
+          `SELECT holds.id,
+                  holds.expires_at AS "expiresAt",
+                  array_agg(seats.label ORDER BY seats.row_letter, seats.seat_number) AS seats
+           FROM holds
+           JOIN seats ON seats.hold_id = holds.id
+           WHERE holds.event_id = $1 AND holds.user_id = $2
+             AND holds.status = 'active' AND holds.expires_at > now()
+           GROUP BY holds.id
+           ORDER BY holds.id`,
+          [id, user.id],
+        )
+      : [];
+
+    // The screens count down by the server's clock, not the browser's.
+    const [{ serverTime }]: { serverTime: Date }[] =
+      await this.dataSource.query('SELECT now() AS "serverTime"');
+
+    return { event, zones, seats, myHolds, serverTime };
   }
 }

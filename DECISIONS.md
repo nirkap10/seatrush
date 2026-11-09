@@ -2,6 +2,14 @@
 
 Draft. The other sections the brief asks for will be added as the project is built.
 
+## Preventing double selling
+
+- Every hold, release and checkout runs in a transaction that first locks the event's row in the `events` table (`SELECT ... FOR UPDATE`). Changes to one event happen one at a time. Different events don't wait for each other.
+- All the checks for a hold run inside that lock: the drop time, the seats being available (including expiry), and the per-fan seat limit. That way, nothing can change between the check and the save.
+- We chose correct over fast, as the brief asks. Under heavy load, requests for the same event wait in a queue.
+
+**Does it still work with 3 copies of the API?** Yes. The lock is kept by PostgreSQL, not in the API's memory. All 3 copies use the same database, so a request from any copy waits for the lock the same way. Time checks also use the database clock, so the copies agree on when a hold expires.
+
 ## Assumptions
 
 Where the brief was silent or unclear, I assumed the following.
@@ -11,6 +19,7 @@ The project is still being built, so these describe the plan and may change.
 
 - A fan is identified by a username sent in an `X-Username` header, with no password. Anyone can act as any username, which is acceptable because the brief asks for no passwords.
 - A username that doesn't exist yet is created automatically.
+- A username is 1 to 30 English letters, numbers, `_` or `-`, because HTTP headers can only carry plain English characters. Usernames are case-sensitive, so `Dana` and `dana` are two different fans, and spaces aren't allowed. Confirmed by Harel.
 - The logged-in user is kept per browser window (`sessionStorage`), so two windows of the same browser can be two different fans. Closing a window logs that fan out, and they can log back in with the same username.
 
 ### Events and seats
@@ -29,7 +38,9 @@ The project is still being built, so these describe the plan and may change.
 
 ### Holds
 
-- A fan can have more than one active hold in the same event, as long as their held and bought seats stay within `MAX_SEATS_PER_USER`. Each hold has its own timer.
+- A fan can have more than one active hold in the same event, as long as their held and bought seats stay within `MAX_SEATS_PER_USER`. Each hold has its own timer. For example, with a limit of 4, a fan holding 3 seats can hold 1 more, but a request for 2 more is rejected as a whole. Confirmed by Harel, and his tests expect it when one fan sends many holds at once.
+- Once a hold is released, expires or is checked out, the fan can make a new hold in that event, as long as their held and bought seats stay within `MAX_SEATS_PER_USER`.
+- Viewing an event also returns the fan's own active holds in it (hold id, seats and expiry time for each), so a fan who closes the window and logs in again can still see, check out or release their seats.
 - Holding at the exact drop time is allowed, because the brief only blocks holds before it.
 - Asking to hold a seat you already hold is rejected, like any other seat that isn't available.
 - A hold ends at the exact moment of `expires_at`. Seats are available again immediately, which is stricter than the 5 seconds the brief allows.

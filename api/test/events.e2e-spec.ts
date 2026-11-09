@@ -99,6 +99,20 @@ describe('events API (real database)', () => {
       );
     });
 
+    it('rejects more than 26 rows', () => {
+      return expectRejected(
+        { ...validEvent, rowCount: 27 },
+        'rowCount must not be greater than 26',
+      );
+    });
+
+    it('rejects more than 100 seats per row', () => {
+      return expectRejected(
+        { ...validEvent, seatsPerRow: 101 },
+        'seatsPerRow must not be greater than 100',
+      );
+    });
+
     it('rejects a missing name', () => {
       const { name: _name, ...withoutName } = validEvent;
       return expectRejected(withoutName, 'name');
