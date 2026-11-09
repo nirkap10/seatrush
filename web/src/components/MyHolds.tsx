@@ -1,4 +1,5 @@
-import { Alert, Button, Paper, Stack, Typography } from '@mui/material';
+import { Alert, Button, Paper, Stack, TextField, Typography } from '@mui/material';
+import { useState } from 'react';
 import { formatPrice } from '../money.ts';
 import { formatCountdown } from '../time.ts';
 import type { MyHold, Seat, Zone } from '../types.ts';
@@ -10,9 +11,12 @@ export function MyHolds(props: {
   zones: Zone[];
   serverNow: number; // the current time by the server's clock
   busy: boolean;
-  onCheckout: (holdId: number) => void;
+  onCheckout: (holdId: number, promoCode: string) => void;
   onRelease: (holdId: number) => void;
 }) {
+  // The promo code typed for each hold, by hold id.
+  const [promoCodes, setPromoCodes] = useState<Record<number, string>>({});
+
   function priceOf(label: string) {
     const seat = props.seats.find((s) => s.label === label);
     const zone = props.zones.find((z) => z.id === seat?.zoneId);
@@ -57,11 +61,23 @@ export function MyHolds(props: {
                 </Typography>
               )}
               <Stack direction="row" spacing={1}>
+                <TextField
+                  size="small"
+                  label="Promo code"
+                  value={promoCodes[hold.id] ?? ''}
+                  onChange={(e) =>
+                    setPromoCodes({
+                      ...promoCodes,
+                      [hold.id]: e.target.value.toUpperCase().trim(),
+                    })
+                  }
+                  sx={{ width: 140 }}
+                />
                 <Button
                   variant="contained"
                   color="secondary"
                   disabled={props.busy}
-                  onClick={() => props.onCheckout(hold.id)}
+                  onClick={() => props.onCheckout(hold.id, promoCodes[hold.id] ?? '')}
                 >
                   Checkout {formatPrice(total)}
                 </Button>

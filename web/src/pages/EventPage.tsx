@@ -116,12 +116,18 @@ export function EventPage(props: { username: string | null }) {
   });
 
   const checkout = useMutation({
-    mutationFn: (holdId: number) =>
-      api<Order>(`/holds/${holdId}/checkout`, { method: 'POST' }),
+    mutationFn: (request: { holdId: number; promoCode: string }) =>
+      api<Order>(`/holds/${request.holdId}/checkout`, {
+        method: 'POST',
+        body: request.promoCode ? { promoCode: request.promoCode } : {},
+      }),
     onSuccess: (order) => {
+      const saved = order.discountAgorot
+        ? ` You saved ${formatPrice(order.discountAgorot)} with ${order.promoCode}.`
+        : '';
       setNotice({
         severity: 'success',
-        text: `You got ${order.seats.join(', ')}! Your tickets are in My tickets.`,
+        text: `You got ${order.seats.join(', ')}!${saved} Your tickets are in My tickets.`,
       });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       refresh();
@@ -265,7 +271,7 @@ export function EventPage(props: { username: string | null }) {
               zones={data.zones}
               serverNow={serverNow}
               busy={busy}
-              onCheckout={(holdId) => checkout.mutate(holdId)}
+              onCheckout={(holdId, promoCode) => checkout.mutate({ holdId, promoCode })}
               onRelease={(holdId) => release.mutate(holdId)}
             />
           </Stack>

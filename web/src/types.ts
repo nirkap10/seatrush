@@ -54,6 +54,8 @@ export interface Order {
   venue: string;
   startsAt: string;
   totalAgorot: number;
+  promoCode: string | null;
+  discountAgorot: number;
   createdAt: string;
   seats: string[];
 }
