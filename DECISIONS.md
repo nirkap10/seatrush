@@ -82,3 +82,7 @@ The project is still being built, so these describe the plan and may change.
 
 - Your tests find the endpoints through our OpenAPI docs, since the brief lets us design the API.
 - The test command requires Docker to be running, for the real PostgreSQL test.
+
+## What I'd still change before a real launch
+
+- A finer lock: lock the fan's row and the rows of seats a hold touches, always in the same order so two holds can't deadlock, instead of the whole event. Holds in different parts of the same event would then stop waiting for each other. The fan's row must stay locked, or one fan's parallel holds could pass the seat limit together.
